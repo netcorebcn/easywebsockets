@@ -1,0 +1,11 @@
+<html>
+<script>
+  var webSocket = new WebSocket('ws://localhost:5000/ws');
+  webSocket.onopen = e => {
+    console.log(e);
+  };
+  webSocket.onmessage = e => {
+    console.log(e.data);
+  };
+</script>
+</html>

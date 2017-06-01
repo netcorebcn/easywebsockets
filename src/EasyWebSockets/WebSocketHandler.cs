@@ -9,7 +9,7 @@ using Newtonsoft.Json.Serialization;
 
 namespace EasyWebSockets
 {
-    public interface IWebSocketPublisher
+    public interface IWebSocketPublisher 
     {
         Task SendMessageToAllAsync(object message);
     }

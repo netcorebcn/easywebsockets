@@ -9,12 +9,13 @@ namespace EasyWebSockets
         public static IServiceCollection AddEasyWebSockets(this IServiceCollection services)
         {
             services.AddTransient<WebSocketConnectionManager>();
-            services.AddSingleton<IWebSocketPublisher,WebSocketHandler>();
+            services.AddSingleton<IWebSocketPublisher, WebSocketHandler>();
             return services;
         }
 
-        public static IApplicationBuilder UseEasyWebSockets(this IApplicationBuilder app, string path = "/ws") 
+        public static IApplicationBuilder UseEasyWebSockets(this IApplicationBuilder app, string path = "/ws")
         {
+            app.UseWebSockets();
             var wsHandler = app.ApplicationServices.GetService(typeof(IWebSocketPublisher));
             return app.Map(new PathString(path), (_app) => _app.UseMiddleware<WebSocketManagerMiddleware>(wsHandler));
         }
