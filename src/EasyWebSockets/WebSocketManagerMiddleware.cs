@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace EasyWebSockets
 {
-    public class WebSocketManagerMiddleware
+    internal class WebSocketManagerMiddleware
     {
         private readonly RequestDelegate _next;
         private WebSocketHandler _webSocketHandler { get; set; }

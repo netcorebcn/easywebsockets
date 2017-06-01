@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard1.4</TargetFramework>
     <PackageId>EasyWebSockets</PackageId>
-    <Version>0.0.1</Version>
+    <Version>0.0.2</Version>
     <AssemblyName>EasyWebSockets</AssemblyName>
     <PackageProjectUrl>https://github.com/netcorebcn/easywebsockets</PackageProjectUrl>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
