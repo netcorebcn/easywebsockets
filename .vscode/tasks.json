@@ -8,10 +8,7 @@
     "tasks": [
         {
             "taskName": "build",
-            "args": [ ],
-            "isBuildCommand": true,
-            "showOutput": "silent",
-            "problemMatcher": "$msCompile"
+            "isBuildCommand": true
         }
     ]
 }
