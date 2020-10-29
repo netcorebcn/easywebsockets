@@ -10,14 +10,16 @@ namespace EasyWebSockets
         {
             services.AddTransient<WebSocketConnectionManager>();
             services.AddSingleton<IWebSocketPublisher, WebSocketHandler>();
+
             return services;
         }
 
         public static IApplicationBuilder UseEasyWebSockets(this IApplicationBuilder app, string path = "/ws")
         {
             app.UseWebSockets();
-            var wsHandler = app.ApplicationServices.GetService(typeof(IWebSocketPublisher));
-            return app.Map(new PathString(path), (_app) => _app.UseMiddleware<WebSocketManagerMiddleware>(wsHandler));
+
+            object wsHandler = app.ApplicationServices.GetRequiredService<IWebSocketPublisher>();
+            return app.Map(new PathString(path), builder => builder.UseMiddleware<WebSocketManagerMiddleware>(wsHandler));
         }
     }
 }
