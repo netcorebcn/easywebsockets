@@ -9,11 +9,10 @@ namespace EasyWebSockets
 {
     internal class WebSocketConnectionManager
     {
-        private ConcurrentDictionary<string, WebSocket> _sockets = new ConcurrentDictionary<string, WebSocket>();
+        private readonly ConcurrentDictionary<string, WebSocket> _sockets = new ConcurrentDictionary<string, WebSocket>();
 
         public WebSocket GetSocketById(string id) => 
             _sockets.FirstOrDefault(p => p.Key == id).Value;
-        
 
         public ConcurrentDictionary<string, WebSocket> GetAll() => _sockets;
 
@@ -21,16 +20,15 @@ namespace EasyWebSockets
 
         public void AddSocket(WebSocket socket) => _sockets.TryAdd(CreateConnectionId(), socket);
 
-        public async Task RemoveSocket(string id)
+        public Task RemoveSocket(string id, CancellationToken cancellationToken = default)
         {
-            WebSocket socket;
-            _sockets.TryRemove(id, out socket);
+            _sockets.TryRemove(id, out WebSocket socket);
 
-            await socket.CloseAsync(closeStatus: WebSocketCloseStatus.NormalClosure, 
+            return socket.CloseAsync(closeStatus: WebSocketCloseStatus.NormalClosure, 
                                     statusDescription: "Closed by the WebSocketManager", 
-                                    cancellationToken: CancellationToken.None);
+                                    cancellationToken: cancellationToken);
         }
 
-        private string CreateConnectionId() => Guid.NewGuid().ToString();
+        private static string CreateConnectionId() => Guid.NewGuid().ToString();
     }
 }

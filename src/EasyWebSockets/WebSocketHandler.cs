@@ -9,16 +9,16 @@ using Newtonsoft.Json.Serialization;
 
 namespace EasyWebSockets
 {
-    public interface IWebSocketPublisher 
+    public interface IWebSocketPublisher
     {
-        Task SendMessageToAllAsync(object message);
+        Task SendMessageToAllAsync(object message, CancellationToken cancellationToken = default);
     }
 
     internal class WebSocketHandler : IWebSocketPublisher
     {
         private readonly WebSocketConnectionManager _webSocketConnectionManager;
 
-        private JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings()
+        private readonly JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings()
         {
             ContractResolver = new CamelCasePropertyNamesContractResolver()
         };
@@ -26,33 +26,36 @@ namespace EasyWebSockets
         public WebSocketHandler(WebSocketConnectionManager webSocketConnectionManager) =>
             _webSocketConnectionManager = webSocketConnectionManager;
 
-        public async Task SendMessageToAllAsync(object message) =>
-            await Task.WhenAll(
-                _webSocketConnectionManager.GetAll()
+        public Task SendMessageToAllAsync(object message, CancellationToken cancellationToken = default) =>
+            Task.WhenAll(_webSocketConnectionManager.GetAll()
                     .Where(pair => pair.Value.State == WebSocketState.Open)
-                    .Select(pair => SendMessageAsync(pair.Value, message)));
-                    
-        public async Task OnConnected(WebSocket socket)
+                    .Select(pair => SendMessageAsync(pair.Value, message, cancellationToken)));
+
+        public Task OnConnected(WebSocket socket, CancellationToken cancellationToken = default)
         {
             _webSocketConnectionManager.AddSocket(socket);
-            await SendMessageAsync(socket, $"Connected with Id: ${_webSocketConnectionManager.GetId(socket)}");
+            return SendMessageAsync(socket, $"Connected with Id: ${_webSocketConnectionManager.GetId(socket)}", cancellationToken);
         }
 
-        public async Task OnDisconnected(WebSocket socket) =>
-            await _webSocketConnectionManager.RemoveSocket(_webSocketConnectionManager.GetId(socket));
+        public Task OnDisconnected(WebSocket socket, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return _webSocketConnectionManager.RemoveSocket(_webSocketConnectionManager.GetId(socket), cancellationToken);
+        }
 
-        private async Task SendMessageAsync(WebSocket socket, object message)
+        private async Task SendMessageAsync(WebSocket socket, object message, CancellationToken cancellationToken = default)
         {
             if (socket.State != WebSocketState.Open)
                 return;
 
-            var serializedMessage = JsonConvert.SerializeObject(message, _jsonSerializerSettings);
+            string? serializedMessage = JsonConvert.SerializeObject(message, _jsonSerializerSettings);
             await socket.SendAsync(buffer: new ArraySegment<byte>(
-                    array: Encoding.ASCII.GetBytes(serializedMessage),offset: 0,
+                    array: Encoding.ASCII.GetBytes(serializedMessage),
+                    offset: 0,
                     count: serializedMessage.Length),
                 messageType: WebSocketMessageType.Text,
                 endOfMessage: true,
-                cancellationToken: CancellationToken.None);
+                cancellationToken: cancellationToken);
         }
     }
 }

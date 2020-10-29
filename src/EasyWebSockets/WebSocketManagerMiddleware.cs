@@ -11,7 +11,7 @@ namespace EasyWebSockets
     internal class WebSocketManagerMiddleware
     {
         private readonly RequestDelegate _next;
-        private WebSocketHandler _webSocketHandler { get; set; }
+        private readonly WebSocketHandler _webSocketHandler;
 
         public WebSocketManagerMiddleware(RequestDelegate next, WebSocketHandler webSocketHandler)
         {
@@ -24,55 +24,44 @@ namespace EasyWebSockets
             if (!context.WebSockets.IsWebSocketRequest)
                 return;
 
-            var socket = await context.WebSockets.AcceptWebSocketAsync();
-            await _webSocketHandler.OnConnected(socket);
+            WebSocket? socket = await context.WebSockets.AcceptWebSocketAsync();
+            await _webSocketHandler.OnConnected(socket, context.RequestAborted);
             await Receive(socket, async (result, serializedInvocationDescriptor) =>
             {
-                if (result.MessageType == WebSocketMessageType.Text)
+                switch (result.MessageType)
                 {
-                    // await _webSocketHandler.ReceiveAsync(socket, result, serializedInvocationDescriptor);
-                    return;
+                    case WebSocketMessageType.Text:
+                        // await _webSocketHandler.ReceiveAsync(socket, result, serializedInvocationDescriptor);
+                        return;
+
+                    case WebSocketMessageType.Close:
+                        await _webSocketHandler.OnDisconnected(socket, context.RequestAborted);
+                        return;
                 }
-
-                else if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    try
-                    {
-                        await _webSocketHandler.OnDisconnected(socket);
-                    }
-
-                    catch (WebSocketException)
-                    {
-                        throw; //let's not swallow any exception for now
-                    }
-
-                    return;
-                }
-            });
+            }, context.RequestAborted);
         }
 
-        private async Task Receive(WebSocket socket, Action<WebSocketReceiveResult, string> handleMessage)
+        private static async Task Receive(WebSocket socket, Action<WebSocketReceiveResult, string> handleMessage, CancellationToken cancellationToken = default)
         {
             while (socket.State == WebSocketState.Open)
             {
-                ArraySegment<Byte> buffer = new ArraySegment<byte>(new Byte[1024 * 4]);
-                string serializedInvocationDescriptor = null;
-                WebSocketReceiveResult result = null;
+                var buffer = new ArraySegment<byte>(new byte[1024 * 4]);
+                string serializedInvocationDescriptor;
+                WebSocketReceiveResult result;
+
                 using (var ms = new MemoryStream())
                 {
                     do
                     {
-                        result = await socket.ReceiveAsync(buffer, CancellationToken.None);
-                        ms.Write(buffer.Array, buffer.Offset, result.Count);
+                        result = await socket.ReceiveAsync(buffer, cancellationToken);
+                        await ms.WriteAsync(buffer.Array, buffer.Offset, result.Count, cancellationToken);
                     }
                     while (!result.EndOfMessage);
 
                     ms.Seek(0, SeekOrigin.Begin);
 
-                    using (var reader = new StreamReader(ms, Encoding.UTF8))
-                    {
-                        serializedInvocationDescriptor = await reader.ReadToEndAsync();
-                    }
+                    using var reader = new StreamReader(ms, Encoding.UTF8);
+                    serializedInvocationDescriptor = await reader.ReadToEndAsync();
                 }
 
                 handleMessage(result, serializedInvocationDescriptor);
